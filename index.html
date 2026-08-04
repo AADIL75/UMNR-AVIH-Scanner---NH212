@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Scan & Send</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e2e5ea;
+    --text: #1a1d23;
+    --muted: #6b7280;
+    --danger: #dc2626;
+    --success: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 10;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  .main-content { padding: 16px 20px 60px; flex: 1; }
+
+  label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; margin-top: 18px; }
+  input[type="text"], input[type="email"], input[type="date"], textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fafbfc;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .photo-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--brand); color: #fff; flex: 1; }
+  .btn-primary:active { background: var(--brand-dark); }
+  .btn-secondary { background: #eef0f3; color: var(--text); flex: 1; }
+  .btn-block { width: 100%; margin-top: 18px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .thumbs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .thumb {
+    position: relative;
+    aspect-ratio: 3/4;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: #f0f1f3;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .page-num {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .thumb .remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(220,38,38,0.9);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .thumb .move-btns {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    display: flex;
+    gap: 4px;
+  }
+  .thumb .move-btns button {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 14px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    margin-top: 16px;
+  }
+
+  .status-banner {
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+    line-height: 1.5;
+  }
+  .status-banner.info { background: #eff6ff; color: #1e40af; display: block; }
+  .status-banner.success { background: #f0fdf4; color: #15803d; display: block; }
+  .status-banner.error { background: #fef2f2; color: #b91c1c; display: block; }
+  .status-banner a { color: inherit; font-weight: 600; }
+
+  #cameraInput, #uploadInput { display: none; }
+
+  footer {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    padding: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>📄 Scan &amp; Send</h1>
+  </header>
+
+  <div class="main-content">
+
+    <label>Document photos</label>
+    <div class="thumbs" id="thumbGrid"></div>
+    <div class="empty-state" id="emptyState">No photos yet. Tap "Take Photo" to capture the first page.</div>
+
+    <div class="photo-actions">
+      <button class="btn btn-primary" id="takePhotoBtn">📷 Take Photo</button>
+      <button class="btn btn-secondary" id="uploadPhotoBtn">🖼️ Upload</button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" />
+    <input type="file" id="uploadInput" accept="image/*" multiple />
+
+    <label for="flightNumber">Flight number</label>
+    <input type="text" id="flightNumber" placeholder="e.g. NH212" />
+
+    <label for="scanDate">Date</label>
+    <input type="date" id="scanDate" />
+
+    <label for="paxName">Pax name</label>
+    <input type="text" id="paxName" placeholder="e.g. KURATA KEI MSTR" style="text-transform:uppercase;" />
+    <div class="hint">Enter surname, first name, and title exactly as it should appear (e.g. SHIROYAMA TAISEI MR).</div>
+
+    <label>File name preview</label>
+    <div class="hint" id="fileNamePreview" style="font-family: ui-monospace, Menlo, monospace; font-size:13px; color: var(--text); background:#fafbfc; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-top:6px;">—</div>
+
+    <button class="btn btn-primary btn-block" id="sendBtn">Upload to Drive</button>
+
+    <div id="statusBanner" class="status-banner"></div>
+  </div>
+
+  <footer>Saves to the shared team Drive folder &middot; nothing is emailed</footer>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURATION — paste your deployed Apps Script Web App URL
+   (see Code.gs / README.md for how to create this). It should
+   end in /exec.
+   ========================================================= */
+const APPS_SCRIPT_URL = "https://script.google.com/a/macros/ana.co.jp/s/AKfycbxqRq2MFHFfO3_zj9aCak9-kFk1KN6FH38KsDQfY2oA-3uaeYoqm740jVcfWF1is57g/exec";
+
+/* =========================================================
+   State
+   ========================================================= */
+let photos = []; // { dataUrl, mimeType }
+
+/* =========================================================
+   DOM refs
+   ========================================================= */
+const thumbGrid = document.getElementById("thumbGrid");
+const emptyState = document.getElementById("emptyState");
+const takePhotoBtn = document.getElementById("takePhotoBtn");
+const uploadPhotoBtn = document.getElementById("uploadPhotoBtn");
+const cameraInput = document.getElementById("cameraInput");
+const uploadInput = document.getElementById("uploadInput");
+const flightNumberInput = document.getElementById("flightNumber");
+const scanDateInput = document.getElementById("scanDate");
+const paxNameInput = document.getElementById("paxName");
+const fileNamePreview = document.getElementById("fileNamePreview");
+const sendBtn = document.getElementById("sendBtn");
+const statusBanner = document.getElementById("statusBanner");
+
+/* =========================================================
+   Filename auto-format: "<FLIGHT> <DDMMMYY> <PAX NAME>.pdf"
+   e.g. "NH212 04AUG26 KURATA KEI MSTR.pdf"
+   ========================================================= */
+const DEFAULT_FLIGHT_NUMBER = "NH212";
+const MONTH_ABBR = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+function initDefaults() {
+  flightNumberInput.value = DEFAULT_FLIGHT_NUMBER;
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  scanDateInput.value = `${yyyy}-${mm}-${dd}`; // native date input format
+  updateFileNamePreview();
+}
+
+function formatDateForFileName(dateInputValue) {
+  if (!dateInputValue) return "";
+  const [y, m, d] = dateInputValue.split("-").map(Number);
+  const dt = new Date(y, m - 1, d); // local time, avoids UTC off-by-one
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mon = MONTH_ABBR[dt.getMonth()];
+  const yy = String(dt.getFullYear()).slice(-2);
+  return `${dd}${mon}${yy}`;
+}
+
+function buildFileName() {
+  const flight = flightNumberInput.value.trim().toUpperCase();
+  const dateStr = formatDateForFileName(scanDateInput.value);
+  const pax = paxNameInput.value.trim().toUpperCase();
+  const parts = [flight, dateStr, pax].filter(Boolean);
+  return sanitizeFileName(parts.join(" "));
+}
+
+function updateFileNamePreview() {
+  const name = buildFileName();
+  fileNamePreview.textContent = name ? `${name}.pdf` : "—";
+}
+
+[flightNumberInput, scanDateInput, paxNameInput].forEach((el) => {
+  el.addEventListener("input", updateFileNamePreview);
+  el.addEventListener("change", updateFileNamePreview);
+});
+
+/* =========================================================
+   Photo capture / management
+   ========================================================= */
+takePhotoBtn.addEventListener("click", () => cameraInput.click());
+uploadPhotoBtn.addEventListener("click", () => uploadInput.click());
+
+cameraInput.addEventListener("change", (e) => handleFiles(e.target.files));
+uploadInput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+function handleFiles(fileList) {
+  const files = Array.from(fileList || []);
+  files.forEach((file) => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      photos.push({ dataUrl: ev.target.result, mimeType: file.type });
+      renderThumbs();
+    };
+    reader.readAsDataURL(file);
+  });
+  cameraInput.value = "";
+  uploadInput.value = "";
+}
+
+function renderThumbs() {
+  emptyState.style.display = photos.length ? "none" : "block";
+  thumbGrid.innerHTML = "";
+  photos.forEach((p, i) => {
+    const div = document.createElement("div");
+    div.className = "thumb";
+    div.innerHTML = `
+      <img src="${p.dataUrl}" alt="page ${i + 1}">
+      <span class="page-num">${i + 1}</span>
+      <button class="remove-btn" data-i="${i}" title="Remove">&times;</button>
+      <div class="move-btns">
+        <button data-move="left" data-i="${i}" ${i === 0 ? "disabled" : ""}>&#8592;</button>
+        <button data-move="right" data-i="${i}" ${i === photos.length - 1 ? "disabled" : ""}>&#8594;</button>
+      </div>
+    `;
+    thumbGrid.appendChild(div);
+  });
+
+  thumbGrid.querySelectorAll(".remove-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      photos.splice(Number(btn.dataset.i), 1);
+      renderThumbs();
+    });
+  });
+  thumbGrid.querySelectorAll("[data-move]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.i);
+      const dir = btn.dataset.move === "left" ? -1 : 1;
+      const j = i + dir;
+      if (j < 0 || j >= photos.length) return;
+      [photos[i], photos[j]] = [photos[j], photos[i]];
+      renderThumbs();
+    });
+  });
+}
+renderThumbs();
+initDefaults();
+
+/* =========================================================
+   PDF generation
+   ========================================================= */
+async function buildPdf() {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+
+  for (let i = 0; i < photos.length; i++) {
+    const img = await loadImage(photos[i].dataUrl);
+    const margin = 24;
+    const maxW = pageW - margin * 2;
+    const maxH = pageH - margin * 2;
+    const ratio = Math.min(maxW / img.width, maxH / img.height);
+    const w = img.width * ratio;
+    const h = img.height * ratio;
+    const x = (pageW - w) / 2;
+    const y = (pageH - h) / 2;
+    if (i > 0) pdf.addPage();
+    pdf.addImage(img, "JPEG", x, y, w, h, undefined, "FAST");
+  }
+
+  return pdf; // caller decides output format (blob / save / datauri)
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+/* =========================================================
+   Send flow — uploads the PDF straight to a shared Google
+   Drive folder via a Google Apps Script Web App endpoint.
+   No address to enter, no OAuth in this app, no cloud
+   project: the script owner's account already has access to
+   the folder and does the writing on the app's behalf.
+
+   Because the deployment is restricted to "Anyone within the
+   organization," the request needs to carry the staff member's
+   normal Google login session. A background fetch() can't do
+   that reliably (Google's login redirect isn't CORS-friendly),
+   so instead we submit a real HTML form to a new tab — an
+   ordinary browser navigation, which handles the org login
+   exactly like clicking any other internal link.
+   ========================================================= */
+sendBtn.addEventListener("click", async () => {
+  if (!photos.length) return showStatus("error", "Add at least one photo first.");
+  if (!paxNameInput.value.trim()) return showStatus("error", "Enter the pax name.");
+  if (!flightNumberInput.value.trim()) return showStatus("error", "Enter the flight number.");
+  if (!scanDateInput.value) return showStatus("error", "Pick a date.");
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith("PASTE_")) {
+    return showStatus("error", "This app hasn't been configured with a Drive upload endpoint yet. See README.md.");
+  }
+
+  const fileName = buildFileName() + ".pdf";
+
+  sendBtn.disabled = true;
+  showStatus("info", "Building PDF…");
+
+  try {
+    const pdf = await buildPdf();
+    const pdfBase64 = pdf.output("datauristring").split(",")[1];
+
+    showStatus("info", "Opening upload tab…");
+    submitToDrive({ fileName, pdfBase64 });
+
+    showStatus(
+      "success",
+      `"${fileName}" is uploading in a new tab — check that tab to confirm it saved to Drive, then you can close it.`
+    );
+    resetForm();
+  } catch (err) {
+    console.error(err);
+    showStatus("error", "Something went wrong: " + (err.message || err));
+  } finally {
+    sendBtn.disabled = false;
+  }
+});
+
+function submitToDrive({ fileName, pdfBase64 }) {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = APPS_SCRIPT_URL;
+  form.target = "_blank";
+  form.style.display = "none";
+
+  const addField = (name, value) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  };
+  addField("fileName", fileName);
+  addField("pdfBase64", pdfBase64);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+
+function resetForm() {
+  photos = [];
+  renderThumbs();
+  paxNameInput.value = "";
+  paxNameInput.focus();
+  updateFileNamePreview();
+}
+
+function sanitizeFileName(name) {
+  return name.replace(/[\\/:*?"<>|]/g, "-").slice(0, 150);
+}
+
+function showStatus(type, msg) {
+  statusBanner.className = "status-banner " + type;
+  statusBanner.innerHTML = msg;
+}
+</script>
+</body>
+</html>

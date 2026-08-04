@@ -625,8 +625,12 @@ function loadImage(dataUrl) {
 // browser's own decoder applies the EXIF rotation when painting, so the
 // canvas — and the JPEG we re-export from it — end up correctly oriented
 // with no rotation metadata left to misinterpret. This also downscales
-// oversized photos so the PDF doesn't balloon in size.
-function toOrientedJpeg(img, maxDim = 2000, quality = 0.85) {
+// oversized photos so the PDF doesn't balloon in size. Kept fairly
+// aggressive (1600px / 0.72 quality) because every extra MB here directly
+// adds to the upload's transfer + base64-decode time on the Apps Script
+// side — for scanned text documents this is still easily sharp enough
+// to read, but noticeably faster to upload than a full-resolution photo.
+function toOrientedJpeg(img, maxDim = 1600, quality = 0.72) {
   let w = img.naturalWidth;
   let h = img.naturalHeight;
   if (Math.max(w, h) > maxDim) {

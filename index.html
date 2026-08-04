@@ -61,7 +61,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M8 30l7-2.5V21l3-1v8l7-2.5v3L18 32v6l3 2v2l-5-1.5L11 42v-2l3-2v-6L6 33z' fill='white' fill-opacity='0.5'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20transform%3D%22translate%2812%2C12%29%20rotate%2845%29%20translate%28-12%2C-12%29%22%3E%3Cpath%20d%3D%22M21%2016v-2l-8-5V3.5C13%202.67%2012.33%202%2011.5%202S10%202.67%2010%203.5V9l-8%205v2l8-2.5V19l-2.5%201.5V22l4-1%204%201v-1.5L13%2019v-5.5z%22%20fill%3D%22white%22%20fill-opacity%3D%220.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
     background-size: 60px 60px;
     opacity: 0.5;
     pointer-events: none;
@@ -155,21 +155,31 @@
 
   input[type="text"], input[type="email"], input[type="date"], textarea {
     width: 100%;
-    padding: 11px 12px;
+    height: 46px;
+    padding: 0 12px;
     border: 1.5px solid var(--border);
     border-radius: 10px;
     font-size: 15px;
+    line-height: 1;
     font-family: inherit;
     background: #fbfcfe;
     color: var(--text);
     transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
   }
+  textarea { height: auto; padding: 11px 12px; }
   input:focus, textarea:focus {
     outline: none;
     border-color: var(--mohican-blue);
     box-shadow: 0 0 0 3px rgba(0, 175, 240, 0.15);
   }
+  input.field-error {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 0 3px rgba(237, 47, 79, 0.15);
+  }
   .hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .required-mark { color: var(--accent-red); margin-left: 2px; }
 
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field-row > div { min-width: 0; }
@@ -418,10 +428,10 @@
   <div class="flash-overlay" id="flashOverlay"></div>
 
   <header>
-    <svg class="plane-trail" viewBox="0 0 64 64" fill="none"><path d="M32 4l6 20 20 6-20 6-6 20-6-20-20-6 20-6z" fill="#fff"/></svg>
+    <svg class="plane-trail" viewBox="0 0 24 24" fill="#fff"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2.5 1.5V22l4-1 4 1v-1.5L13 19v-5.5z"/></svg>
     <div class="brand-row">
       <div class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="#fff"><path d="M2.5 19.5l19-7.5-19-7.5v6l13 1.5-13 1.5v6z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#fff"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2.5 1.5V22l4-1 4 1v-1.5L13 19v-5.5z"/></svg>
       </div>
       <div>
         <h1>ANA Scan</h1>
@@ -464,14 +474,14 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--triton-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 19.5l19-7.5-19-7.5v6l13 1.5-13 1.5v6z"/></svg></span>
+          <span class="card-title-icon"><svg viewBox="0 0 24 24" fill="var(--triton-blue)"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2.5 1.5V22l4-1 4 1v-1.5L13 19v-5.5z"/></svg></span>
           Flight details
         </div>
       </div>
 
       <div class="field-row">
         <div>
-          <label for="flightNumber"><span class="field-icon-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 19.5l19-7.5-19-7.5v6l13 1.5-13 1.5v6z"/></svg>Flight number</span></label>
+          <label for="flightNumber"><span class="field-icon-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2.5 1.5V22l4-1 4 1v-1.5L13 19v-5.5z"/></svg>Flight number</span></label>
           <input type="text" id="flightNumber" placeholder="e.g. NH212" />
         </div>
         <div>
@@ -480,12 +490,12 @@
         </div>
       </div>
 
-      <label for="paxName"><span class="field-icon-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>Pax name</span></label>
-      <input type="text" id="paxName" placeholder="e.g. KURATA KEI MSTR" style="text-transform:uppercase;" />
+      <label for="paxName"><span class="field-icon-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>Pax name<span class="required-mark">*</span></span></label>
+      <input type="text" id="paxName" placeholder="e.g. KURATA KEI MSTR" style="text-transform:uppercase;" required />
       <div class="hint">Enter surname, first name, and title exactly as it should appear (e.g. SHIROYAMA TAISEI MR).</div>
 
       <div class="ticket-preview">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 19.5l19-7.5-19-7.5v6l13 1.5-13 1.5v6z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2.5 1.5V22l4-1 4 1v-1.5L13 19v-5.5z"/></svg>
         <div>
           <span class="ticket-label">File name</span>
           <span class="ticket-text" id="fileNamePreview">—</span>
@@ -739,10 +749,14 @@ function toOrientedJpeg(img, maxDim = 1600, quality = 0.72) {
    exactly like clicking any other internal link.
    ========================================================= */
 sendBtn.addEventListener("click", async () => {
+  paxNameInput.classList.remove("field-error");
+  flightNumberInput.classList.remove("field-error");
+  scanDateInput.classList.remove("field-error");
+
   if (!photos.length) return showStatus("error", "Add at least one photo first.");
-  if (!paxNameInput.value.trim()) return showStatus("error", "Enter the pax name.");
-  if (!flightNumberInput.value.trim()) return showStatus("error", "Enter the flight number.");
-  if (!scanDateInput.value) return showStatus("error", "Pick a date.");
+  if (!paxNameInput.value.trim()) return flagRequiredField(paxNameInput, "Pax name is required before you can upload.");
+  if (!flightNumberInput.value.trim()) return flagRequiredField(flightNumberInput, "Enter the flight number.");
+  if (!scanDateInput.value) return flagRequiredField(scanDateInput, "Pick a date.");
   if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith("PASTE_")) {
     return showStatus("error", "This app hasn't been configured with a Drive upload endpoint yet. See README.md.");
   }
@@ -824,6 +838,17 @@ const STATUS_ICONS = {
   success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
   error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
 };
+
+function flagRequiredField(el, message) {
+  el.classList.add("field-error");
+  el.focus();
+  showStatus("error", message);
+}
+
+[paxNameInput, flightNumberInput, scanDateInput].forEach((el) => {
+  el.addEventListener("input", () => el.classList.remove("field-error"));
+  el.addEventListener("change", () => el.classList.remove("field-error"));
+});
 
 function showStatus(type, msg) {
   statusBanner.className = "status-banner visible " + type;

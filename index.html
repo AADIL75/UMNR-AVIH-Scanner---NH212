@@ -28,6 +28,7 @@
     --text: var(--gray-800);
     --muted: var(--gray-500);
     --brand-gradient: linear-gradient(135deg, var(--triton-blue) 0%, var(--mohican-blue) 100%);
+    --app-max-width: 480px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
@@ -38,13 +39,25 @@
     color: var(--text);
   }
   .app {
-    max-width: 480px;
+    max-width: var(--app-max-width);
     margin: 0 auto;
     min-height: 100vh;
     background: var(--bg);
     display: flex;
     flex-direction: column;
     position: relative;
+  }
+
+  /* Tablets / larger screens: the 480px phone-width cap left large unused
+     margins on iPad. Widen the whole app (header, cards, bottom bar all
+     read the same --app-max-width variable, so they stay in sync) and
+     let the photo grid use the extra room instead of just white space. */
+  @media (min-width: 700px) {
+    :root { --app-max-width: 760px; }
+    .thumbs { grid-template-columns: repeat(4, 1fr); }
+    .card { padding: 22px 26px; }
+    .main-content { padding: 22px 26px 150px; }
+    header { padding: calc(20px + env(safe-area-inset-top)) 28px 24px; }
   }
 
   /* ---------- Header ---------- */
@@ -356,7 +369,7 @@
   .bottom-bar {
     position: fixed;
     left: 0; right: 0; bottom: 0;
-    max-width: 480px;
+    max-width: var(--app-max-width);
     margin: 0 auto;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(10px);
@@ -415,12 +428,7 @@
     100% { opacity: 0; }
   }
 
-  footer {
-    font-size: 10.5px;
-    color: var(--muted);
-    text-align: center;
-    padding: 4px 16px 8px;
-  }
+
 </style>
 </head>
 <body>
@@ -511,7 +519,6 @@
       <span id="sendBtnIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
       <span id="sendBtnLabel">Upload to Drive</span>
     </button>
-    <footer>Saves to the shared team Drive folder &middot; nothing is emailed</footer>
   </div>
 </div>
 
@@ -521,7 +528,7 @@
    (see Code.gs / README.md for how to create this). It should
    end in /exec.
    ========================================================= */
-const APPS_SCRIPT_URL = "https://script.google.com/a/macros/ana.co.jp/s/AKfycbxqRq2MFHFfO3_zj9aCak9-kFk1KN6FH38KsDQfY2oA-3uaeYoqm740jVcfWF1is57g/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/a/macros/ana.co.jp/s/AKfycbxh8USJCVyxGKSeL5ATSTdhbQ00XXjM032imsZe8pq_MGZWdglEgyFe3HQOpUdTwzBA/exec";
 
 /* =========================================================
    State
@@ -763,6 +770,17 @@ sendBtn.addEventListener("click", async () => {
 
   const fileName = buildFileName() + ".pdf";
 
+  // Open the tab RIGHT HERE — synchronously, still inside the click
+  // handler's original call stack — pointed straight at the Apps Script
+  // URL so it starts loading immediately (and shows its own instant
+  // "Uploading..." page). This has to happen before the first `await`
+  // below: once we cross an await, the browser no longer considers what
+  // follows part of the original trusted click, and Safari in particular
+  // will silently block a window.open() called from that point on,
+  // undoing the whole point of this flow. Opening it now also means the
+  // tab is loading in parallel with the PDF build instead of after it.
+  const popup = window.open(APPS_SCRIPT_URL, UPLOAD_WINDOW_NAME);
+
   sendBtn.disabled = true;
   setSendBtnLoading(true, "Building…");
   showStatus("info", "Building PDF…");
@@ -772,8 +790,8 @@ sendBtn.addEventListener("click", async () => {
     const pdfBase64 = pdf.output("datauristring").split(",")[1];
 
     setSendBtnLoading(true, "Uploading…");
-    showStatus("info", "Opening upload tab…");
-    submitToDrive({ fileName, pdfBase64 });
+    showStatus("info", "Uploading…");
+    submitToDrive({ fileName, pdfBase64, popup });
 
     showStatus(
       "success",
@@ -799,11 +817,46 @@ function setSendBtnLoading(isLoading, label) {
   sendBtnLabel.textContent = isLoading ? label : "Upload to Drive";
 }
 
-function submitToDrive({ fileName, pdfBase64 }) {
+// Named window so both the initial open() and the fallback form submit
+// below target the SAME tab rather than opening a second one.
+const UPLOAD_WINDOW_NAME = "ana_scan_upload";
+
+function submitToDrive({ fileName, pdfBase64, popup }) {
+  // The tab (Apps Script's doGet response) was already opened synchronously
+  // back in the click handler. Here we just hand it the actual file data
+  // once it signals it's ready to receive it, via postMessage — it then
+  // uploads the data itself with its own fetch() call.
+  if (!popup || popup.closed) {
+    // Popup was blocked or the user closed it — fall back to a direct submit.
+    submitToDriveViaForm({ fileName, pdfBase64 });
+    return;
+  }
+
+  let handled = false;
+  function onMessage(event) {
+    if (event.source !== popup || event.data !== "ana-scan-ready") return;
+    handled = true;
+    window.removeEventListener("message", onMessage);
+    popup.postMessage({ fileName, pdfBase64 }, "*");
+  }
+  window.addEventListener("message", onMessage);
+
+  // Safety net: if the popup never signals it's ready (e.g. an older
+  // cached deployment without this handshake, or the message gets lost),
+  // fall back to submitting the payload directly into that same tab
+  // after a short grace period, so the upload still completes either way.
+  setTimeout(() => {
+    if (handled) return;
+    window.removeEventListener("message", onMessage);
+    submitToDriveViaForm({ fileName, pdfBase64 });
+  }, 4000);
+}
+
+function submitToDriveViaForm({ fileName, pdfBase64 }) {
   const form = document.createElement("form");
   form.method = "POST";
   form.action = APPS_SCRIPT_URL;
-  form.target = "_blank";
+  form.target = UPLOAD_WINDOW_NAME;
   form.style.display = "none";
 
   const addField = (name, value) => {

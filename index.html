@@ -50,14 +50,20 @@
 
   /* Tablets / larger screens: the 480px phone-width cap left large unused
      margins on iPad. Widen the whole app (header, cards, bottom bar all
-     read the same --app-max-width variable, so they stay in sync) and
-     let the photo grid use the extra room instead of just white space. */
+     read the same --app-max-width variable, so they stay in sync) using a
+     fluid width tied to the actual viewport — rather than one fixed pixel
+     value — so it genuinely scales with device resolution: a bit wider on
+     a portrait iPad, wider still in landscape or on an iPad Pro, capped
+     only so lines of text don't get absurd on a desktop monitor. */
   @media (min-width: 700px) {
-    :root { --app-max-width: 760px; }
+    :root { --app-max-width: min(94vw, 1100px); }
     .thumbs { grid-template-columns: repeat(4, 1fr); }
     .card { padding: 22px 26px; }
-    .main-content { padding: 22px 26px 150px; }
+    .main-content { padding: 22px 26px 24px; }
     header { padding: calc(20px + env(safe-area-inset-top)) 28px 24px; }
+  }
+  @media (min-width: 1000px) {
+    .thumbs { grid-template-columns: repeat(5, 1fr); }
   }
 
   /* ---------- Header ---------- */
@@ -106,7 +112,7 @@
   header h1 { font-size: 19px; margin: 0; font-weight: 800; letter-spacing: 0.2px; }
   header .tagline { font-size: 12px; opacity: 0.85; margin-top: 1px; }
 
-  .main-content { padding: 18px 16px 140px; flex: 1; }
+  .main-content { padding: 18px 16px 8px; }
 
   @keyframes fadeSlideUp {
     from { opacity: 0; transform: translateY(14px); }
@@ -367,14 +373,18 @@
 
   /* ---------- Sticky bottom CTA ---------- */
   .bottom-bar {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
+    /* Normal document flow, directly after the cards — not fixed to the
+       viewport. A fixed bar combined with a flex-grown content area meant
+       the app always stretched to fill the full screen height, which on
+       a short form + tall iPad screen left a large empty gap between the
+       last field and the button. This way the button just sits right
+       after the form; any leftover space on a tall screen lands below it
+       instead of awkwardly above it. */
+    position: relative;
     max-width: var(--app-max-width);
-    margin: 0 auto;
-    background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    margin: 8px auto 0;
+    background: transparent;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
     z-index: 30;
   }
   .bottom-bar::before {
